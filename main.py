@@ -1,7 +1,5 @@
 """
 Постановка задачи:
--Отрисовать игровое поле. Прямогуольник 10х20. Расчертить на клетки.+
--Создать фигуры. (Упростить? 3-4 фигуры?).+
     -Фигуры должны поворачиваться на 90 градусов по команде игрока.
     Влево и вправо. Так же необходимо иметь возможность ускоренно
     перемещать их вниз.
@@ -18,15 +16,17 @@ import numpy as np
 
 """
 TODO:
--Реализовать сдвиг сегмента влево-вправо;+
--Реализовать "падение" сегментов;+
+-Не позволять фигурам выходить за рамки поля влево-вправо;
+-Реализовать остановку фигуры при касании другой фигуры;
 -Реализовать ичезновение при сборе ряда;
 -Реализовать вращение фигур;
+-Записать файл зависимостей для pip;
 
 Фичи:
 -Настройка сложности?
 -Ускорение игры со временем?
--Запоминание рекорда?
+-Запоминание рекорда? Формат CSV - имя пользователя:рекорд?
+-Отображать подсказку с управлением для новых пользователей?
 """
 
 IN_GAME = True #Продолжается ли игра
@@ -89,21 +89,63 @@ def is_new_position_correct(coords):
     global active_shape_coords
     global min_line
     global shapes_positions
-    
+
     max_x = 0
+    #Неверное обозначение осей движения. Исправить.
     for yx in coords:
         y, x = yx[0], yx[1]
         if x > max_x:
             max_x = x
-    #print(max_x)
+
+
+    #Некорректные значения?
+    min_y = 0
+    max_y = 9
+
+    if num_type_acive_shape == 0:
+        min_y += 1
+    elif num_type_acive_shape in [1,2,3,4,6]:
+        max_y += 1
+    elif num_type_acive_shape == 5:
+        min_y -= 1
+
+
+    if y <= min_y or y >= max_y:
+        return False
 
     if max_x > min_line:
-        #print(active_shape_coords)
+        #Начало новой итерации
         update_shapes_positions(active_shape_coords)
         active_shape = False
         active_shape_coords = []
         return False
-    #print("***", x, y)
+
+    #Проверка, нет ли под фигурой другой фигуры
+    #Ошибка здесь. Найти и отладить. Опять фиксить координаты?
+    """flag = False
+    for xy in coords:
+        x, y = xy[0], xy[1]
+        print(x, y)
+
+        try:
+            if shapes_positions[y][x] == 1:
+                print("Фигура обнаружена!")
+                flag = True
+                #break
+        except:
+            #Выход проверки за нижнюю границу
+            pass
+
+        if flag:
+            try:
+                update_shapes_positions(active_shape_coords)
+                active_shape = False
+                active_shape_coords = []
+                return False
+            except:
+                print("Обрабатывай это по-нормальному!")"""
+
+
     return True
 
 
@@ -117,7 +159,7 @@ def move_shape(vector):
         new_coords_x,new_coords_y = coords[0]+vector[0], coords[1]+vector[1]
         new_active_shape_coords.append((new_coords_x,new_coords_y))
 
-
+    #Проверка на то, что новая позиция находится на игровом поле:
     if is_new_position_correct(new_active_shape_coords):
         #Стирание фигуры
         create_shape(active_shape_coords[-1][0],active_shape_coords[-1][1],
@@ -142,15 +184,33 @@ def update_shapes_positions(coords):
     """Обновляет массив shapes_positions, заполняя '1' клетки,
     занятые фигурами."""
     global shapes_positions
-    print(coords)
-    print(min_line)
+
     for xy in coords:
         x, y = xy[0], xy[1]
-        x = x - 1
-        if min_line == 20:
-            y = y - 1
+        y = y - 1
+        if num_type_acive_shape == 0:
+            y = y + 1
+            x = x + 1
+        elif num_type_acive_shape == 1:
+            y = y + 1
+        elif num_type_acive_shape == 3:
+            x = x - 1
+        elif num_type_acive_shape == 4:
+            x = x - 1
+        elif num_type_acive_shape == 5:
+            x = x + 1
+        elif num_type_acive_shape == 6:
+            y = y + 1
+            x = x - 1
+
         shapes_positions[y][x] = 1
-    print(shapes_positions)
+
+    #print(num_type_acive_shape)
+    #print(shapes_positions)
+
+    for string in shapes_positions:
+        if 0 not in string:
+            update_field()
 
 
 
@@ -158,12 +218,10 @@ def update_field():
     """Вызывается при обнаружении полной строки из '1' в
     массиве shapes_positions, очищает строку, увеличивает счёт,
     опускает все закрашенные клетки ВЫШЕ строки на 1 клетку."""
+    print("Нужно обновить игровое поле!")
     pass
 
-
 #-------------------------------------------------------------------------------
-#Захват клавиш
-
 
 
 #Создание поля для игры
@@ -174,30 +232,28 @@ for x in range(10):
         create_segment(x*SEG_SIZE,y*SEG_SIZE)
 
 
-i = 0
 while IN_GAME:
     if not active_shape:
         #Создание фигуры
-        type_acive_shape = random.randint(0,6)
-        if type_acive_shape in [0, 1, 6]:
+        num_type_acive_shape = random.randint(0,6)
+        #num_type_acive_shape = 6
+        if num_type_acive_shape in [0, 1, 6]:
             #Корректировка для некоторых фигур ввиду их особенностей
             min_line = 19
         else:
             min_line = 20
-        type_acive_shape = SHAPES[type_acive_shape]
+        type_acive_shape = SHAPES[num_type_acive_shape]
         create_shape(5,-4,type_acive_shape)
         active_shape = True
 
     #Падение фигуры вниз
     move_shape((0,1))
 
-    #print(active_shape_coords[-1])
-    #print(type_acive_shape)
-
+    #Отображение окна. Переместить вниз?
     cv2.imshow('Tetris v0.0.1', field)
+
     key = cv2.waitKey(1000)
     #print(key)
-    i += 1
 
     #Перемещение фигуры вправо и влево
     if key == 226 or key == 100:
@@ -213,13 +269,9 @@ while IN_GAME:
     elif key == 101 or key == 243:
         rotate_shape()
 
+    #b-key
     elif key == 98 or key == 232:
         break
-
-    #Тестирование новых фигур на доске
-    #if i == 20:
-        #i = 0
-        #active_shape = False
 
 
 #cv2.destroyAllWindows()
