@@ -1,7 +1,7 @@
 """
 Постановка задачи:
--Отрисовать игровое поле. Прямогуольник 10х20. Расчертить на клетки.
--Создать фигуры. (Упростить? 3-4 фигуры?).
+-Отрисовать игровое поле. Прямогуольник 10х20. Расчертить на клетки.+
+-Создать фигуры. (Упростить? 3-4 фигуры?).+
     -Фигуры должны поворачиваться на 90 градусов по команде игрока.
     Влево и вправо. Так же необходимо иметь возможность ускоренно
     перемещать их вниз.
@@ -18,9 +18,9 @@ import numpy as np
 
 """
 TODO:
--Реализовать сдвиг сегмента влево-вправо;
--Реализовать "падение" сегментов;
--Реализовать ичезновение при сборе ряда(по цвету пикселей??);
+-Реализовать сдвиг сегмента влево-вправо;+
+-Реализовать "падение" сегментов;+
+-Реализовать ичезновение при сборе ряда;
 -Реализовать вращение фигур;
 
 Фичи:
@@ -82,9 +82,30 @@ def create_shape(x, y, type, flag = True):
                        color_2, 1)
 
 
-def is_new_position_correct():
+def is_new_position_correct(coords):
     """Проверяет, возможно ли положение фигуры после
     поворота или перемещения."""
+    global active_shape
+    global active_shape_coords
+    global min_line
+    global shapes_positions
+    
+    max_x = 0
+    for yx in coords:
+        y, x = yx[0], yx[1]
+        if x > max_x:
+            max_x = x
+    #print(max_x)
+
+    if max_x > min_line:
+        #print(active_shape_coords)
+        update_shapes_positions(active_shape_coords)
+        active_shape = False
+        active_shape_coords = []
+        return False
+    #print("***", x, y)
+    return True
+
 
 
 def move_shape(vector):
@@ -96,15 +117,17 @@ def move_shape(vector):
         new_coords_x,new_coords_y = coords[0]+vector[0], coords[1]+vector[1]
         new_active_shape_coords.append((new_coords_x,new_coords_y))
 
-    #Стирание фигуры
-    create_shape(active_shape_coords[-1][0],active_shape_coords[-1][1],
+
+    if is_new_position_correct(new_active_shape_coords):
+        #Стирание фигуры
+        create_shape(active_shape_coords[-1][0],active_shape_coords[-1][1],
                  type_acive_shape,False)
 
-    #Получение координат после смещения
-    active_shape_coords = new_active_shape_coords
+                 #Получение координат после смещения
+        active_shape_coords = new_active_shape_coords
 
-    #Отображение фигуры на новом месте
-    create_shape(active_shape_coords[-1][0],active_shape_coords[-1][1],
+        #Отображение фигуры на новом месте
+        create_shape(active_shape_coords[-1][0],active_shape_coords[-1][1],
                  type_acive_shape)
 
 
@@ -112,6 +135,29 @@ def move_shape(vector):
 def rotate_shape():
     """Поворачивает активную фигуру на 90 градусов
     влево или вправо. Не должна позволять фигуре выходить за границы."""
+    pass
+
+
+def update_shapes_positions(coords):
+    """Обновляет массив shapes_positions, заполняя '1' клетки,
+    занятые фигурами."""
+    global shapes_positions
+    print(coords)
+    print(min_line)
+    for xy in coords:
+        x, y = xy[0], xy[1]
+        x = x - 1
+        if min_line == 20:
+            y = y - 1
+        shapes_positions[y][x] = 1
+    print(shapes_positions)
+
+
+
+def update_field():
+    """Вызывается при обнаружении полной строки из '1' в
+    массиве shapes_positions, очищает строку, увеличивает счёт,
+    опускает все закрашенные клетки ВЫШЕ строки на 1 клетку."""
     pass
 
 
@@ -129,23 +175,51 @@ for x in range(10):
 
 
 i = 0
-while True:
+while IN_GAME:
     if not active_shape:
         #Создание фигуры
-        type_acive_shape = SHAPES[random.randint(0,6)]
-        create_shape(5,0,type_acive_shape)
+        type_acive_shape = random.randint(0,6)
+        if type_acive_shape in [0, 1, 6]:
+            #Корректировка для некоторых фигур ввиду их особенностей
+            min_line = 19
+        else:
+            min_line = 20
+        type_acive_shape = SHAPES[type_acive_shape]
+        create_shape(5,-4,type_acive_shape)
         active_shape = True
 
     #Падение фигуры вниз
     move_shape((0,1))
 
-    print(active_shape_coords[-1])
-    print(type_acive_shape)
+    #print(active_shape_coords[-1])
+    #print(type_acive_shape)
 
     cv2.imshow('Tetris v0.0.1', field)
-    cv2.waitKey(1000)
+    key = cv2.waitKey(1000)
+    #print(key)
     i += 1
-    if i == 10:
+
+    #Перемещение фигуры вправо и влево
+    if key == 226 or key == 100:
+        move_shape((1,0))
+    elif key == 244 or key == 97:
+        move_shape((-1,0))
+
+    #Вращение фигуры
+    #q-key
+    elif key == 113 or key == 233:
+        rotate_shape()
+    #e-key
+    elif key == 101 or key == 243:
+        rotate_shape()
+
+    elif key == 98 or key == 232:
         break
 
-cv2.destroyAllWindows()
+    #Тестирование новых фигур на доске
+    #if i == 20:
+        #i = 0
+        #active_shape = False
+
+
+#cv2.destroyAllWindows()
